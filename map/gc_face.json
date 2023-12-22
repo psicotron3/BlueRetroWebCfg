@@ -1,6 +1,6 @@
 {
     "name":"GameCube Ports on Wii For Emulation",
-    "desc":"Preset that macthes the wii retroarch default mapping - Face buttons to the corresponding label (A on GC to A, B to B etc) on a Switch Pro Controller (same as SNES), Z to - (select), R and L to corresponding digital triggers, RZ and LZ to digital and analog.",
+    "desc":"Preset that macthes the wii retroarch default mapping - Face buttons to the corresponding label (A on GC to A, B to B etc) on a Switch Pro Controller (same as SNES), Z to - (select), R, L, RZ and LZ to corresponding digital and analog triggres.",
     "console":"GC",
     "map":[
         ["PAD_LX_LEFT",  "PAD_LX_LEFT",  0, 100, 50, 135, 0, 0, 0],
@@ -26,10 +26,12 @@
         ["PAD_LM",       "PAD_LM",       0, 100, 50, 135, 0, 0, 0],
         ["PAD_LM",       "PAD_LT",       0, 100, 95, 135, 0, 0, 0],
         ["PAD_LS",       "PAD_LT",       0, 100, 50, 135, 0, 0, 0],
+        ["PAD_LS",       "PAD_LM",       0, 100, 50, 135, 0, 0, 0],
         ["PAD_LJ",       "PAD_LS",       0, 100, 50, 135, 0, 0, 0],
         ["PAD_RM",       "PAD_RM",       0, 100, 50, 135, 0, 0, 0],
         ["PAD_RM",       "PAD_RT",       0, 100, 95, 135, 0, 0, 0],
-        ["PAD_RS",       "PAD_RT",       0, 100, 50, 135, 0, 0, 0],        
+        ["PAD_RS",       "PAD_RT",       0, 100, 50, 135, 0, 0, 0],
+        ["PAD_RS",       "PAD_RM",       0, 100, 50, 135, 0, 0, 0],        
         ["PAD_RJ",       "PAD_RS",       0, 100, 50, 135, 0, 0, 0]
     ]
 }
