@@ -1,6 +1,6 @@
 {
     "name":"GameCube Ports on Wii For Emulation",
-    "desc":"Preset that macthes the wii retroarch default mapping - Face buttons to the corresponding label (A on GC to A, B to B etc) on a Switch Pro Controller (same as SNES), Z to - (select), R, L, RZ and LZ to corresponding digital and analog triggres.",
+    "desc":"Preset that matches the wii retroarch default mapping - Face buttons to the corresponding label (A on GC to A, B to B etc) on a Switch Pro Controller (same as SNES), Z to - (select), R, L, RZ and LZ to respective (and merged) digital and analog gamecube triggers.",
     "console":"GC",
     "map":[
         ["PAD_LX_LEFT",  "PAD_LX_LEFT",  0, 100, 50, 135, 0, 0, 0],
