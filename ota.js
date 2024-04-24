@@ -3,6 +3,7 @@
 import { brUuid, cfg_cmd_get_fw_name, cfg_cmd_get_fw_ver } from './utils/constants.js';
 import { getLatestRelease } from './utils/getLatestRelease.js';
 import { getStringCmd } from './utils/getStringCmd.js';
+import { getAppVersion } from './utils/getAppVersion.js';
 import { getBdAddr } from './utils/getBdAddr.js';
 import { otaWriteFirmware } from './utils/otaWriteFirmware.js';
 
@@ -143,12 +144,13 @@ export function btConn() {
     })
     .then(value => {
         latest_ver = value;
-        return getStringCmd(brService, cfg_cmd_get_fw_ver);
+        return getAppVersion(brService);
     })
     .then(value => {
         app_ver = value;
         let app_ver_is_18x = (app_ver.indexOf('v1.8') != -1);
-        if (app_ver_is_18x) {
+        let app_ver_bogus = (app_ver.indexOf('v') == -1);
+        if (app_ver_is_18x || app_ver_bogus) {
             return '';
         }
         else {
