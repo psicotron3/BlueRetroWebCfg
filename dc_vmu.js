@@ -1,11 +1,12 @@
 // Base on https://www.html5rocks.com/en/tutorials/file/dndfiles//
 
-import { brUuid, cfg_cmd_get_fw_name, cfg_cmd_get_fw_ver } from './utils/constants.js';
+import { brUuid, vmuSize } from './utils/constants.js';
+import { downloadFile } from './utils/downloadFile.js';
 import { getLatestRelease } from './utils/getLatestRelease.js';
-import { getStringCmd } from './utils/getStringCmd.js';
 import { getAppVersion } from './utils/getAppVersion.js';
 import { getBdAddr } from './utils/getBdAddr.js';
-import { otaWriteFirmware } from './utils/otaWriteFirmware.js';
+import { dcWriteFile } from './utils/dcWriteFile.js';
+import { dcReadFile } from './utils/dcReadFile.js';
 
 var bluetoothDevice;
 let brService = null;
@@ -14,18 +15,11 @@ var progress = document.querySelector('.percent');
 var cancel = 0;
 var bdaddr = '';
 var app_ver = '';
-var app_name = '';
 var latest_ver = '';
 var name = '';
-let cur_fw_is_hw2 = 0;
 
-export function abortFwUpdate() {
+export function abortFileTransfer() {
     cancel = 1;
-}
-
-function setProgress(percent) {
-    progress.style.width = percent + '%';
-    progress.textContent = percent + '%';
 }
 
 function errorHandler(evt) {
@@ -43,16 +37,40 @@ function errorHandler(evt) {
     };
 }
 
-function updateProgress(total, loaded) {
-    var percentLoaded = Math.round((loaded / total) * 100);
-    // Increase the progress bar length.
-    if (percentLoaded < 100) {
-        progress.style.width = percentLoaded + '%';
-        progress.textContent = percentLoaded + '%';
-    }
+function setProgress(percent) {
+    progress.style.width = percent + '%';
+    progress.textContent = percent + '%';
 }
 
-export function firmwareUpdate(evt) {
+export function pakRead(evt) {
+    // Reset progress indicator on new file selection.
+    progress.style.width = '0%';
+    progress.textContent = '0%';
+
+    readFile()
+    .then(value => {
+        let view = new DataView(value.buffer);
+        for (let i = 0; i < vmuSize; i += 4) {
+            view.setUint32(i, view.getUint32(i), true)
+        }
+        downloadFile(new Blob([value.buffer], {type: "application/bin"}),
+            'vmu.bin');
+        document.getElementById("divBtConn").style.display = 'none';
+        document.getElementById("divInfo").style.display = 'block';
+        document.getElementById("divFileSelect").style.display = 'block';
+        document.getElementById("divFileTransfer").style.display = 'none';
+    })
+    .catch(error => {
+        log('Argh! ' + error);
+        document.getElementById("divBtConn").style.display = 'none';
+        document.getElementById("divInfo").style.display = 'block';
+        document.getElementById("divFileSelect").style.display = 'block';
+        document.getElementById("divFileTransfer").style.display = 'none';
+        cancel = 0;
+    });
+}
+
+export function pakWrite(evt) {
     // Reset progress indicator on new file selection.
     progress.style.width = '0%';
     progress.textContent = '0%';
@@ -63,45 +81,55 @@ export function firmwareUpdate(evt) {
         log('File read cancelled');
     };
     reader.onload = function(e) {
-        var decoder = new TextDecoder("utf-8");
-        var header = decoder.decode(reader.result.slice(0, 256));
-        let new_fw_is_hw2 = (header.indexOf('hw2') != -1);
-
-        log("new_fw_is_hw2: " + new_fw_is_hw2);
-
-        if (cur_fw_is_hw2 == new_fw_is_hw2) {
-            writeFirmware(reader.result, 0);
+        let data = reader.result.slice(0, vmuSize);
+        let view = new DataView(data);
+        for (let i = 0; i < vmuSize; i += 4) {
+            view.setUint32(i, view.getUint32(i), true)
         }
-        else {
-            log("Hardware and firmware mismatch!");
-        }
+        writeFile(data);
     }
 
-    let file = document.getElementById("fwFile").value;
-    let ext = file.match(/\.[0-9a-z]+$/i);
-
-    if (ext[0] == '.bin') {
-        // Read in the image file as a binary string.
-        reader.readAsArrayBuffer(document.getElementById("fwFile").files[0]);
-    }
-    else {
-        log("Invalid file format. Make sure to unzip the archive!");
-    }
+    // Read in the image file as a binary string.
+    reader.readAsArrayBuffer(document.getElementById("pakFile").files[0]);
 }
 
-function writeFirmware(data) {
+function readFile() {
+    return new Promise(function(resolve, reject) {
+        document.getElementById('progress_bar').className = 'loading';
+        document.getElementById("divBtConn").style.display = 'none';
+        document.getElementById("divInfo").style.display = 'block';
+        document.getElementById("divFileSelect").style.display = 'none';
+        document.getElementById("divFileTransfer").style.display = 'block';
+        dcReadFile(brService, setProgress, cancel)
+        .then(data => {
+            resolve(data);
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+function writeFile(data) {
     document.getElementById('progress_bar').className = 'loading';
     document.getElementById("divBtConn").style.display = 'none';
     document.getElementById("divInfo").style.display = 'block';
-    document.getElementById("divFwSelect").style.display = 'none';
-    document.getElementById("divFwUpdate").style.display = 'block';
-    otaWriteFirmware(brService, data, setProgress, cancel)
+    document.getElementById("divFileSelect").style.display = 'none';
+    document.getElementById("divFileTransfer").style.display = 'block';
+    dcWriteFile(brService, data, setProgress, cancel)
+    .then(_ => {
+        document.getElementById("divBtConn").style.display = 'none';
+        document.getElementById("divInfo").style.display = 'block';
+        document.getElementById("divFileSelect").style.display = 'block';
+        document.getElementById("divFileTransfer").style.display = 'none';
+    })
     .catch(error => {
         log('Argh! ' + error);
         document.getElementById("divBtConn").style.display = 'none';
         document.getElementById("divInfo").style.display = 'block';
-        document.getElementById("divFwSelect").style.display = 'block';
-        document.getElementById("divFwUpdate").style.display = 'none';
+        document.getElementById("divFileSelect").style.display = 'block';
+        document.getElementById("divFileTransfer").style.display = 'none';
+        cancel = 0;
     });
 }
 
@@ -110,8 +138,8 @@ function onDisconnected() {
     cancel = 0;
     document.getElementById("divBtConn").style.display = 'block';
     document.getElementById("divInfo").style.display = 'none';
-    document.getElementById("divFwSelect").style.display = 'none';
-    document.getElementById("divFwUpdate").style.display = 'none';
+    document.getElementById("divFileSelect").style.display = 'none';
+    document.getElementById("divFileTransfer").style.display = 'none';
 }
 
 export function btConn() {
@@ -143,19 +171,8 @@ export function btConn() {
         return getLatestRelease();
     })
     .then(value => {
-        latest_ver = value;
+        latest_ver = value
         return getAppVersion(brService);
-    })
-    .then(value => {
-        app_ver = value;
-        let app_ver_is_18x = (app_ver.indexOf('v1.8') != -1);
-        let app_ver_bogus = (app_ver.indexOf('v') == -1);
-        if (app_ver_is_18x || app_ver_bogus) {
-            return '';
-        }
-        else {
-            return getStringCmd(brService, cfg_cmd_get_fw_name);
-        }
     })
     .catch(error => {
         if (error.name == 'NotFoundError'
@@ -165,7 +182,7 @@ export function btConn() {
         throw error;
     })
     .then(value => {
-        app_name = value;
+        app_ver = value;
         document.getElementById("divInfo").innerHTML = 'Connected to: ' + name + ' (' + bdaddr + ') [' + app_ver + ']';
         try {
             if (app_ver.indexOf(latest_ver) == -1) {
@@ -175,18 +192,11 @@ export function btConn() {
         catch (e) {
             // Just move on
         }
-        cur_fw_is_hw2 = 0;
-        let app_ver_is_hw2 = (app_ver.indexOf('hw2') != -1);
-        let app_name_is_hw2 = (app_name.indexOf('hw2') != -1);
-        log("app_ver_is_hw2: " + app_ver_is_hw2 + " app_name_is_hw2: " + app_name_is_hw2);
-        if (app_ver_is_hw2 || app_name_is_hw2) {
-            cur_fw_is_hw2 = 1;
-        }
         log('Init Cfg DOM...');
         document.getElementById("divBtConn").style.display = 'none';
         document.getElementById("divInfo").style.display = 'block';
-        document.getElementById("divFwSelect").style.display = 'block';
-        document.getElementById("divFwUpdate").style.display = 'none';
+        document.getElementById("divFileSelect").style.display = 'block';
+        document.getElementById("divFileTransfer").style.display = 'none';
     })
     .catch(error => {
         log('Argh! ' + error);
